@@ -49,7 +49,7 @@ GLuint shaderProgram;
 Model* cityModel = nullptr;
 Model* carModel = nullptr;
 Model* groundModel = nullptr;
-mat4 carModelMatrix = glm::translate(mat4(1.0f), vec3(0.0f, 5.0f, 0.0f));
+mat4 carModelMatrix = glm::translate(mat4(1.0f), vec3(0.0f, 5.0f, 0.0f)); // initial position of the car, 4x4 identity matrix translated 5 units up in y
 
 vec3 worldUp = vec3(0.0f, 1.0f, 0.0f);
 
@@ -144,12 +144,12 @@ void display()
 	// Initially fixed, but will be replaced in the tutorial.
 
 	// use camera direction as -z axis and compute the x (cameraRight) and y (cameraUp) base vectors
-	vec3 cameraRight = normalize(cross(cameraDirection, worldUp));
-	vec3 cameraUp = normalize(cross(cameraRight, cameraDirection));
+	vec3 cameraRight = normalize(cross(cameraDirection, worldUp)); // camera right is perpendicular to camera direction and world up
+	vec3 cameraUp = normalize(cross(cameraRight, cameraDirection)); // camera up is perpendicular to camera right and camera direction
 
-	mat3 cameraBaseVectorsWorldSpace(cameraRight, cameraUp, -cameraDirection);
-	mat4 cameraRotation = mat4(transpose(cameraBaseVectorsWorldSpace));
-	mat4 viewMatrix = cameraRotation * translate(-cameraPosition);
+	mat3 cameraBaseVectorsWorldSpace(cameraRight, cameraUp, -cameraDirection); // 3x3 matrix with the camera base vectors as columns
+	mat4 cameraRotation = mat4(transpose(cameraBaseVectorsWorldSpace)); // camerabasevectorsWorldSpace is orthonormal, so its inverse is its transpose
+	mat4 viewMatrix = cameraRotation * translate(-cameraPosition); // combine rotation and translation to form the view matrix
 
 	// Setup the projection matrix
 	if(w != old_w || h != old_h)
@@ -248,9 +248,9 @@ bool handleEvents(void)
 			int delta_y = event.motion.y - g_prevMouseCoords.y;
 			if (event.button.button & SDL_BUTTON(SDL_BUTTON_LEFT)) {
 				float rotationSpeed = 0.005f;
-				mat4 yaw = rotate(rotationSpeed * -delta_x, worldUp);
-				mat4 pitch = rotate(rotationSpeed * -delta_y, normalize(cross(cameraDirection, worldUp)));
-				cameraDirection = vec3(pitch * yaw * vec4(cameraDirection, 0.0f));
+				mat4 yaw = rotate(rotationSpeed * -delta_x, worldUp); // rotate around world up vector
+				mat4 pitch = rotate(rotationSpeed * -delta_y, normalize(cross(cameraDirection, worldUp)));  // Rotate around camera which is perpendicular to world up and camera direction
+				cameraDirection = vec3(pitch * yaw * vec4(cameraDirection, 0.0f)); // apply rotation to camera direction
 			}
 			g_prevMouseCoords.x = event.motion.x;
 			g_prevMouseCoords.y = event.motion.y;
@@ -261,36 +261,36 @@ bool handleEvents(void)
 	const uint8_t* state = SDL_GetKeyboardState(nullptr);
 
 	// implement camera controls based on key states
-	const float speed = 10.0f;
-	vec3 car_forward = vec3(0, 0, 1);
-	car_forward = vec3(R * vec4(car_forward, 0));
-	const float rotateSpeed = 2.0f;
+	const float speed = 10.0f; // movement speed in units per second
+	vec3 car_forward = vec3(0, 0, 1); // move car along its local z axis
+	car_forward = vec3(R * vec4(car_forward, 0)); // R is  the car's rotation matrix, which is a 4x4, so we convert car_forward to a vec4 with w=0. (Which direction is the car facing?)
+	const float rotateSpeed = 2.0f; // rotation speed in radians per second
 	if(state[SDL_SCANCODE_UP])
 	{
-		T = translate(car_forward * speed * deltaTime) * T;
+		T = translate(car_forward * speed * deltaTime) * T; // translate along car's forward direction
 	}
 	if(state[SDL_SCANCODE_DOWN])
 	{
-		T = translate(-car_forward * speed * deltaTime) * T;
+		T = translate(-car_forward * speed * deltaTime) * T; // translate along car's backward direction
 	}
 	if(state[SDL_SCANCODE_LEFT])
 	{
-		R = glm::rotate(rotateSpeed * deltaTime, glm::vec3(0, 1, 0)) * R;
+		R = glm::rotate(rotateSpeed * deltaTime, glm::vec3(0, 1, 0)) * R; // rotate left around world y axis
 	}
 	if(state[SDL_SCANCODE_RIGHT])
 	{
-		R = glm::rotate(-rotateSpeed * deltaTime, glm::vec3(0, 1, 0)) * R;
+		R = glm::rotate(-rotateSpeed * deltaTime, glm::vec3(0, 1, 0)) * R; // rotate right around world y axis
 	}
 	if(state[SDL_SCANCODE_W])
 	{
-		cameraPosition += cameraDirection * speed * deltaTime;
+		cameraPosition += cameraDirection * speed * deltaTime; // move camera forward
 	}
 	if (state[SDL_SCANCODE_S])
 	{
-		cameraPosition += -cameraDirection * speed * deltaTime;
+		cameraPosition += -cameraDirection * speed * deltaTime; // move camera backward
 	}
 
-	carModelMatrix = T*R;
+	carModelMatrix = T * R; // update car model matrix, combining translation and rotation, first rotate then translate
 
 	return quitEvent;
 }

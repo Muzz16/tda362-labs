@@ -95,19 +95,19 @@ void initialize()
 	//			Set up the attrib pointer.
 	//			Enable the vertex attrib array.
 	///////////////////////////////////////////////////////////////////////////
-	float texcoords[] = {
+	float texcoords[] = { 
 	0.0f, 0.0f, // (u,v) for v0 
 	0.0f, 15.0f, // (u,v) for v1
 	1.0f, 15.0f, // (u,v) for v2
 	1.0f, 0.0f // (u,v) for v3
 	};
 
-	glGenBuffers(1, &texcoordBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, texcoordBuffer);
-	glBufferData(GL_ARRAY_BUFFER, labhelper::array_length(texcoords) * sizeof(float), texcoords, GL_STATIC_DRAW);
+	glGenBuffers(1, &texcoordBuffer); // Generate buffer for texture coordinates
+	glBindBuffer(GL_ARRAY_BUFFER, texcoordBuffer); // Bind the buffer
+	glBufferData(GL_ARRAY_BUFFER, labhelper::array_length(texcoords) * sizeof(float), texcoords, GL_STATIC_DRAW); // Upload texture coordinate data
 
-	glVertexAttribPointer(1, 2, GL_FLOAT, false/*normalized*/, 0/*stride*/, 0/*offset*/);
-	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, false/*normalized*/, 0/*stride*/, 0/*offset*/); // Set attribute pointer for texture coordinates, location 1 and 2 components (u,v)
+	glEnableVertexAttribArray(1); // Enable the vertex attribute array for texture coordinates
 
 
 	///////////////////////////////////////////////////////////////////////////
@@ -184,53 +184,53 @@ void initialize()
 	//			Load Texture
 	//************************************
 	// Task 2
-	int w, h, comp;
-	unsigned char* image = stbi_load("../scenes/textures/asphalt.jpg", &w, &h, &comp, STBI_rgb_alpha);
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+	int w, h, comp; // width, height, components per pixel
+	unsigned char* image = stbi_load("../scenes/textures/asphalt.jpg", &w, &h, &comp, STBI_rgb_alpha); // Load image file
+	glGenTextures(1, &texture); // Generate texture object
+	glBindTexture(GL_TEXTURE_2D, texture); // Bind the texture object
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, image); // Upload image data to texture object
 
 
 	// Indicates that the active texture should be repeated,
 	// instead of for instance clamped, for texture coordinates > 1 or <-1.
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Set texture wrapping mode for S (U) coordinate
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Set texture wrapping mode for T (V) coordinate
 
 	// texture filtering
-	glGenerateMipmap(GL_TEXTURE_2D);
+	glGenerateMipmap(GL_TEXTURE_2D); // Generate mipmaps for the texture
 	// Sets the type of filtering to be used on magnifying and
 	// minifying the active texture. These are the nicest available options.
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Set magnification filter
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Set minification filter
 
 	// reduced noise but is a lot sharper (less blurriness in the distance). Anisotropic filtering
 	// samples more texels.
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16.0f);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16.0f); // Set anisotropic filtering level
 
-	free(image);
+	free(image); // Free the loaded image data
 
-	unsigned char* image2 = stbi_load("../scenes/textures/explosion.png", &w, &h, &comp, STBI_rgb_alpha);
-	glGenTextures(1, &texture2);
-	glBindTexture(GL_TEXTURE_2D, texture2);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, image2);
+	unsigned char* image2 = stbi_load("../scenes/textures/explosion.png", &w, &h, &comp, STBI_rgb_alpha); // Load second image file
+	glGenTextures(1, &texture2); // Generate second texture object
+	glBindTexture(GL_TEXTURE_2D, texture2); // Bind the second texture object
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, image2); // Upload second image data to texture object
 
 	// Indicates that the active texture should be repeated,
 	// instead of for instance clamped, for texture coordinates > 1 or <-1.
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Set texture wrapping mode for S (U) coordinate	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Set texture wrapping mode for T (V) coordinate
 
 	// texture filtering
-	glGenerateMipmap(GL_TEXTURE_2D);
+	glGenerateMipmap(GL_TEXTURE_2D); // Generate mipmaps for the second texture
 	// Sets the type of filtering to be used on magnifying and
 	// minifying the active texture. These are the nicest available options.
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Set magnification filter
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Set minification filter
 
 	// reduced noise but is a lot sharper (less blurriness in the distance). Anisotropic filtering
 	// samples more texels.
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16.0f);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16.0f); // Set anisotropic filtering level
 
-	free(image2);
+	free(image2); // Free the loaded second image data
 }
 
 
@@ -273,18 +273,18 @@ void display(void)
 	glUniform3f(loc, camera_pan, 10, 0);
 
 	// Task 3.1
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
+	glActiveTexture(GL_TEXTURE0); // Activate texture unit 0
+	glBindTexture(GL_TEXTURE_2D, texture); // Bind the asphalt texture to texture unit 0
 
-	glBindVertexArray(vertexArrayObject);
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+	glBindVertexArray(vertexArrayObject); // Bind the vertex array object for the ground
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw the ground using the index buffer
 
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glBindTexture(GL_TEXTURE_2D, texture2);
-	glBindVertexArray(vertexArrayObject2);
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-	glDisable(GL_BLEND);
+	glEnable(GL_BLEND); // Enable blending for the explosion quad
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Set blending function for transparency
+	glBindTexture(GL_TEXTURE_2D, texture2); // Bind the explosion texture
+	glBindVertexArray(vertexArrayObject2); // Bind the vertex array object for the explosion quad
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // Draw the explosion quad using the index buffer
+	glDisable(GL_BLEND); // Disable blending after drawing the explosion quad
 
 
 	glUseProgram(0); // "unsets" the current shader program. Not really necessary.
@@ -319,9 +319,9 @@ void gui()
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
 	            ImGui::GetIO().Framerate);
 	// ----------------------------------------------------------
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-
+	glActiveTexture(GL_TEXTURE0); // Activate texture unit 0
+	glBindTexture(GL_TEXTURE_2D, texture); // Bind the asphalt texture to texture unit 0
+	// Set magnification filter based on user selection
 	switch (mag) 
 	{
 		case 0:	
@@ -331,7 +331,7 @@ void gui()
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			break;
 	}
-
+	// Set minification filter based on user selection
 	switch (mini)
 	{
 	case 0:
