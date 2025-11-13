@@ -140,6 +140,28 @@ vec3 calculateIndirectIllumination(vec3 wo, vec3 n, vec3 base_color)
 	// Task 6 - Look up in the reflection map from the perfect specular
 	//          direction and calculate the dielectric and metal terms.
 	///////////////////////////////////////////////////////////////////////////
+	vec3 wi = normalize(reflect(-wo, n));
+	vec3 wr = normalize(vec3(viewInverse * vec4(wi, 0.0)));
+
+	theta = acos(max(-1.0f, min(1.0f, wr.y)));
+	phi = atan(wr.z, wr.x);
+	if(phi < 0.0f)
+		phi = phi + 2.0f * PI;
+	lookup = vec2(phi / (2.0 * PI), 1 - theta / PI);
+
+	float s = material_shininess;
+	float r1 = sqrt(2.0 / (s + 2.0));
+	float roughness = sqrt(r1);
+	Li = environment_multiplier * textureLod(reflectionMap, lookup, roughness * 7.0).rgb;
+
+	vec3 wh = normalize(wo + wi);
+	float dotwowh = max(dot(wo,wh), 0.0);
+	float F = material_fresnel + (1.0 - material_fresnel) * pow(1.0 - dotwowh, 5.0);
+	vec3 dielectric_term = F * Li + (1.0 - F) * diffuse_term;
+	vec3 metal_term = F * base_color * Li;
+	vec3 term = material_metalness * metal_term + (1.0 - material_metalness) * dielectric_term;
+	indirect_illum = term;
+
 
 	return indirect_illum;
 }
