@@ -61,11 +61,11 @@ vec3 calculateDirectIllumiunation(vec3 wo, vec3 n, vec3 base_color)
 	//            to the light. If the light is backfacing the triangle,
 	//            return vec3(0);
 	///////////////////////////////////////////////////////////////////////////
-	const float d = length(viewSpaceLightPosition - viewSpacePosition);
-	const float d2 = 1.0 / (d * d);
-	vec3 Li = point_light_intensity_multiplier * point_light_color * d2;
-	vec3 wi = normalize(viewSpaceLightPosition - viewSpacePosition);
-	if ( dot(n,wi) <= 0.0 ) {
+	const float d = length(viewSpaceLightPosition - viewSpacePosition); // distance from fragment to light source
+	const float d2 = 1.0 / (d * d); // 1 / d^2
+	vec3 Li = point_light_intensity_multiplier * point_light_color * d2; // Li 
+	vec3 wi = normalize(viewSpaceLightPosition - viewSpacePosition); // direction from fragment to light source
+	if ( dot(n,wi) <= 0.0 ) { // if n <= 0, light is backfacing, return black
 		return vec3(0.0);
 	}
 
@@ -84,28 +84,28 @@ vec3 calculateDirectIllumiunation(vec3 wo, vec3 n, vec3 base_color)
 	vec3 wh = normalize(wo + wi);
 	const float F = material_fresnel + (1.0 - material_fresnel) * pow(1.0 - dot(wh, wi), 5.0);
 
-	float dotnwh = max(dot(n, wh), 0.0001);
+	float dotnwh = max(dot(n, wh), 0.0001); // Avoid NaN to avoid pink pixels
 	float dotnwo = max(dot(n, wo), 0.0001);
 	float dotwowh = max(dot(wo, wh), 0.0001);
 
 	float s = material_shininess;
 	float dterm1 = (s + 2.0) / (2.0 * PI);
 	float dterm2 = pow(dotnwh, s);
-	float D = dterm1 * dterm2;
+	float D = dterm1 * dterm2; // D(wh)
 
 	float gterm1 = (2.0 * dotnwh * dotnwo) / dotwowh;
 	float gterm2 = (2.0 * dotnwh * nwi) / dotwowh;
-	float G = min(1.0, min(gterm1, gterm2));
-	float denom = 4.0 * clamp(dotnwo * nwi, 0.0001, 1.0);
+	float G = min(1.0, min(gterm1, gterm2)); // G(wi, wo)
+	float denom = 4.0 * clamp(dotnwo * nwi, 0.0001, 1.0); // make sure the value is not 0 to avoid NaN
 
-	float brdf = (F * D * G) / denom;
+	float brdf = (F * D * G) / denom; // BRDF
 
 	///////////////////////////////////////////////////////////////////////////
 	// Task 3 - Make your shader respect the parameters of our material model.
 	///////////////////////////////////////////////////////////////////////////
-	vec3 dielectric_term = brdf * nwi * Li + (1.0 - F) * diffuse_term;
-	vec3 metal_term = brdf * base_color * nwi * Li;
-	vec3 term = material_metalness * metal_term + (1.0 - material_metalness) * dielectric_term;
+	vec3 dielectric_term = brdf * nwi * Li + (1.0 - F) * diffuse_term; // dielectric term
+	vec3 metal_term = brdf * base_color * nwi * Li; // metal term
+	vec3 term = material_metalness * metal_term + (1.0 - material_metalness) * dielectric_term; // final value for direct illum
 	direct_illum = term;
 
 	return direct_illum;
@@ -121,7 +121,7 @@ vec3 calculateIndirectIllumination(vec3 wo, vec3 n, vec3 base_color)
 	// Calculate the spherical coordinates of the direction
 
 
-	vec3 world_normal = vec3(viewInverse * vec4(n, 0.0));
+	vec3 world_normal = vec3(viewInverse * vec4(n, 0.0)); // normal in world space
 
 	float theta = acos(max(-1.0f, min(1.0f, world_normal.y)));
 	float phi = atan(world_normal.z, world_normal.x);
@@ -131,8 +131,8 @@ vec3 calculateIndirectIllumination(vec3 wo, vec3 n, vec3 base_color)
 	}
 
 	vec2 lookup = vec2(phi / (2.0 * PI), 1 - theta / PI);
-	vec3 Li = environment_multiplier * texture(irradianceMap, lookup).rgb;
-	vec3 diffuse_term = base_color * (1.0 / PI) * Li;
+	vec3 Li = environment_multiplier * texture(irradianceMap, lookup).rgb; // incoming radiance from the environment
+	vec3 diffuse_term = base_color * (1.0 / PI) * Li; // diffuse reflection
 	indirect_illum = diffuse_term;
 
 
@@ -140,8 +140,8 @@ vec3 calculateIndirectIllumination(vec3 wo, vec3 n, vec3 base_color)
 	// Task 6 - Look up in the reflection map from the perfect specular
 	//          direction and calculate the dielectric and metal terms.
 	///////////////////////////////////////////////////////////////////////////
-	vec3 wi = normalize(reflect(-wo, n));
-	vec3 wr = normalize(vec3(viewInverse * vec4(wi, 0.0)));
+	vec3 wi = normalize(reflect(-wo, n)); // perfect reflection direction in view space
+	vec3 wr = normalize(vec3(viewInverse * vec4(wi, 0.0))); // perfect reflection direction in world space
 
 	theta = acos(max(-1.0f, min(1.0f, wr.y)));
 	phi = atan(wr.z, wr.x);
@@ -150,16 +150,16 @@ vec3 calculateIndirectIllumination(vec3 wo, vec3 n, vec3 base_color)
 	lookup = vec2(phi / (2.0 * PI), 1 - theta / PI);
 
 	float s = material_shininess;
-	float r1 = sqrt(2.0 / (s + 2.0));
-	float roughness = sqrt(r1);
-	Li = environment_multiplier * textureLod(reflectionMap, lookup, roughness * 7.0).rgb;
-
+	float r1 = sqrt(2.0 / (s + 2.0)); // term for roughness
+	float roughness = sqrt(r1); // roughness value
+	Li = environment_multiplier * textureLod(reflectionMap, lookup, roughness * 7.0).rgb; // incoming radiance from the reflection map
+	
 	vec3 wh = normalize(wo + wi);
 	float dotwowh = max(dot(wo,wh), 0.0);
-	float F = material_fresnel + (1.0 - material_fresnel) * pow(1.0 - dotwowh, 5.0);
-	vec3 dielectric_term = F * Li + (1.0 - F) * diffuse_term;
-	vec3 metal_term = F * base_color * Li;
-	vec3 term = material_metalness * metal_term + (1.0 - material_metalness) * dielectric_term;
+	float F = material_fresnel + (1.0 - material_fresnel) * pow(1.0 - dotwowh, 5.0); // F
+	vec3 dielectric_term = F * Li + (1.0 - F) * diffuse_term; // dielectric term
+	vec3 metal_term = F * base_color * Li; // metal term
+	vec3 term = material_metalness * metal_term + (1.0 - material_metalness) * dielectric_term; // final value for indirect illum
 	indirect_illum = term;
 
 
@@ -173,8 +173,8 @@ void main()
 	// Task 1.1 - Fill in the outgoing direction, wo, and the normal, n. Both
 	//            shall be normalized vectors in view-space.
 	///////////////////////////////////////////////////////////////////////////
-	vec3 wo = -normalize(viewSpacePosition);
-	vec3 n = normalize(viewSpaceNormal);
+	vec3 wo = -normalize(viewSpacePosition); //direction from surface to viewer
+	vec3 n = normalize(viewSpaceNormal);  //surface normal into view space
 
 	
 

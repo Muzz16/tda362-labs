@@ -170,9 +170,9 @@ void initFullScreenQuad()
 		// ...
 
 		static const glm::vec2 positions[] = { { -1.0f, -1.0f }, { 1.0f, -1.0f }, { 1.0f, 1.0f },
-											   { -1.0f, -1.0f }, { 1.0f, 1.0f },  { -1.0f, 1.0f } };
+											   { -1.0f, -1.0f }, { 1.0f, 1.0f },  { -1.0f, 1.0f } }; // Two triangles forming a quad
 
-		GLuint positionsBuffer;
+		GLuint positionsBuffer; 
 		glGenBuffers(1, &positionsBuffer);
 		glBindBuffer(GL_ARRAY_BUFFER, positionsBuffer);
 		glBufferData(GL_ARRAY_BUFFER, labhelper::array_length(positions) * sizeof(glm::vec2), positions, GL_STATIC_DRAW);
@@ -198,12 +198,12 @@ void drawFullScreenQuad()
 	// Task 4.2
 	// ...
 
-	GLboolean previousDepthState;
-	glGetBooleanv(GL_DEPTH_TEST, &previousDepthState);
-	glDisable(GL_DEPTH_TEST);
-	glBindVertexArray(fullScreenQuadVAO);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-	if (previousDepthState) {
+	GLboolean previousDepthState; // Store previous depth state
+	glGetBooleanv(GL_DEPTH_TEST, &previousDepthState); // Save previous depth state
+	glDisable(GL_DEPTH_TEST); // Disable depth testing for full screen quad
+	glBindVertexArray(fullScreenQuadVAO); // Bind the full screen quad VAO
+	glDrawArrays(GL_TRIANGLES, 0, 6); // 6 vertices for 2 triangles
+	if (previousDepthState) { // Restore previous depth state
 		glEnable(GL_DEPTH_TEST);
 	}
 
@@ -368,11 +368,11 @@ void display(void)
 	//            environment map.
 	///////////////////////////////////////////////////////////////////////////
 
-	glUseProgram(backgroundProgram);
-	labhelper::setUniformSlow(backgroundProgram, "environment_multiplier", environment_multiplier);
-	labhelper::setUniformSlow(backgroundProgram, "inv_PV", inverse(projectionMatrix * viewMatrix));
-	labhelper::setUniformSlow(backgroundProgram, "camera_pos", camera.position);
-	drawFullScreenQuad();
+	glUseProgram(backgroundProgram); // Use the background shader program
+	labhelper::setUniformSlow(backgroundProgram, "environment_multiplier", environment_multiplier); // Set environment multiplier uniform
+	labhelper::setUniformSlow(backgroundProgram, "inv_PV", inverse(projectionMatrix * viewMatrix)); // Set inverse projection-view matrix uniform
+	labhelper::setUniformSlow(backgroundProgram, "camera_pos", camera.position); // Set camera position uniform
+	drawFullScreenQuad(); // Draw the full screen quad / background
 
 	///////////////////////////////////////////////////////////////////////////
 	// Render the .obj models
