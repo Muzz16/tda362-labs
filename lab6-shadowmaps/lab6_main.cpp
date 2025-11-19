@@ -75,14 +75,14 @@ enum ClampMode
 };
 
 FboInfo shadowMapFB;
-int shadowMapResolution = 1024;
+int shadowMapResolution = 1028;
 int shadowMapClampMode = ClampMode::Edge;
 bool shadowMapClampBorderShadowed = false;
 bool usePolygonOffset = true;
 bool useSoftFalloff = false;
 bool useHardwarePCF = false;
-float polygonOffset_factor = 1.0f;
-float polygonOffset_units = 1.0f;
+float polygonOffset_factor = 2.0f;
+float polygonOffset_units = 10.0f;
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -361,6 +361,8 @@ void display(void)
 		shadowMapFB.resize(shadowMapResolution, shadowMapResolution);
 	}
 
+	glBindTexture(GL_TEXTURE_2D, shadowMapFB.depthBuffer);
+
 	if (shadowMapClampMode == ClampMode::Edge) {
 		glBindTexture(GL_TEXTURE_2D, shadowMapFB.depthBuffer);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -375,14 +377,20 @@ void display(void)
 		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, &border.x);
 	}
 
+
+
+	if(useHardwarePCF){
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	}
+	else
+	{
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
+
+
 	glBindTexture(GL_TEXTURE_2D, 0);
-
-	glBindTexture(GL_TEXTURE_2D, shadowMapFB.depthBuffer);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-
 	///////////////////////////////////////////////////////////////////////////
 	// Draw Shadow Map
 	///////////////////////////////////////////////////////////////////////////

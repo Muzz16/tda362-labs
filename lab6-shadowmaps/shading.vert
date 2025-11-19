@@ -29,5 +29,5 @@ void main()
 	texCoord = texCoordIn;
 	viewSpaceNormal = (normalMatrix * vec4(normalIn, 0.0)).xyz;
 	viewSpacePosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
-	vec4 shadowMapCoord = lightMatrix * vec4(viewSpacePosition, 1.f);
+	shadowMapCoord = lightMatrix * vec4(viewSpacePosition, 1.f);
 }
