@@ -17,6 +17,8 @@ layout(binding = 0) uniform sampler2D colorMap;
 uniform int has_emission_texture;
 layout(binding = 5) uniform sampler2D emissiveMap;
 
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // Environment
 ///////////////////////////////////////////////////////////////////////////////
@@ -43,6 +45,7 @@ in vec2 texCoord;
 in vec3 viewSpaceNormal;
 in vec3 viewSpacePosition;
 
+
 ///////////////////////////////////////////////////////////////////////////////
 // Input uniform variables
 ///////////////////////////////////////////////////////////////////////////////
@@ -56,16 +59,19 @@ layout(location = 0) out vec4 fragmentColor;
 
 
 
+in vec4 shadowMapCoord;
+layout(binding = 10) uniform sampler2DShadow shadowMapTex;
+
+uniform int useSpotLight;
+uniform int useSoftFalloff;
+uniform vec3 viewSpaceLightDir;
+uniform float spotInnerAngle;
+uniform float spotOuterAngle;
 
 vec3 calculateDirectIllumiunation(vec3 wo, vec3 n, vec3 base_color)
 {
 	vec3 direct_illum = base_color;
-	//test
-	///////////////////////////////////////////////////////////////////////////
-	// Task 1.2 - Calculate the radiance Li from the light, and the direction
-	//            to the light. If the light is backfacing the triangle,
-	//            return vec3(0);
-	///////////////////////////////////////////////////////////////////////////
+
 	const float d = length(viewSpaceLightPosition - viewSpacePosition); // distance from fragment to light source
 	const float d2 = 1.0 / (d * d); // 1 / d^2
 	vec3 Li = point_light_intensity_multiplier * point_light_color * d2; // Li 
@@ -74,18 +80,12 @@ vec3 calculateDirectIllumiunation(vec3 wo, vec3 n, vec3 base_color)
 		return vec3(0.0);
 	}
 
-	///////////////////////////////////////////////////////////////////////////
-	// Task 1.3 - Calculate the diffuse term and return that as the result
-	///////////////////////////////////////////////////////////////////////////
 	const float nwi = max(0.0001, dot(n,wi));
 	const float p = 1.0 / PI;
 	vec3 diffuse_term = base_color * nwi * p * Li;
 	direct_illum = diffuse_term;
 
-	///////////////////////////////////////////////////////////////////////////
-	// Task 2 - Calculate the Torrance Sparrow BRDF and return the light
-	//          reflected from that instead
-	///////////////////////////////////////////////////////////////////////////
+
 	vec3 wh = normalize(wo + wi);
 	const float F = material_fresnel + (1.0 - material_fresnel) * pow(1.0 - dot(wh, wi), 5.0);
 
@@ -105,9 +105,6 @@ vec3 calculateDirectIllumiunation(vec3 wo, vec3 n, vec3 base_color)
 
 	float brdf = (F * D * G) / denom; // BRDF
 
-	///////////////////////////////////////////////////////////////////////////
-	// Task 3 - Make your shader respect the parameters of our material model.
-	///////////////////////////////////////////////////////////////////////////
 	vec3 dielectric_term = brdf * nwi * Li + (1.0 - F) * diffuse_term; // dielectric term
 	vec3 metal_term = brdf * base_color * nwi * Li; // metal term
 	vec3 term = material_metalness * metal_term + (1.0 - material_metalness) * dielectric_term; // final value for direct illum
@@ -176,6 +173,27 @@ void main()
 	float visibility = 1.0;
 	float attenuation = 1.0;
 
+	visibility = textureProj(shadowMapTex, shadowMapCoord);
+
+	attenuation = 1.0;
+	if(useSpotLight == 1)
+	{
+		vec3 posToLight = normalize(viewSpaceLightPosition - viewSpacePosition);
+		float cosAngle = dot(posToLight, -viewSpaceLightDir);
+
+		if(useSoftFalloff == 0)
+		{
+			// Spotlight with hard border:
+			attenuation = (cosAngle > spotOuterAngle) ? 1.0 : 0.0;
+		}
+		else
+		{
+			// Spotlight with soft border:
+			attenuation = smoothstep(spotOuterAngle, spotInnerAngle, cosAngle);
+		}
+
+		visibility *= attenuation;
+	}
 
 	vec3 wo = -normalize(viewSpacePosition);
 	vec3 n = normalize(viewSpaceNormal);
