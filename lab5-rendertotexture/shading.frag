@@ -58,6 +58,7 @@ layout(location = 0) out vec4 fragmentColor;
 vec3 calculateDirectIllumiunation(vec3 wo, vec3 n, vec3 base_color)
 {
 	vec3 direct_illum = base_color;
+	//test
 	///////////////////////////////////////////////////////////////////////////
 	// Task 1.2 - Calculate the radiance Li from the light, and the direction
 	//            to the light. If the light is backfacing the triangle,
