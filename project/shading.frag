@@ -62,6 +62,7 @@ in vec4 shadowMapCoord;
 layout(binding = 10) uniform sampler2DShadow shadowMapTex;
 
 uniform int useSpotLight;
+uniform int useSoftFalloff;
 
 
 
@@ -179,9 +180,17 @@ void main()
 		vec3 posToLight = normalize(viewSpaceLightPosition - viewSpacePosition);
 		float cosAngle = dot(posToLight, -viewSpaceLightDir);
 
-		// Spotlight with soft border:
-		attenuation = smoothstep(spotOuterAngle, spotInnerAngle, cosAngle);
-		
+		if(useSoftFalloff == 0)
+		{
+			// Spotlight with hard border:
+			attenuation = (cosAngle > spotOuterAngle) ? 1.0 : 0.0;
+		}
+		else
+		{
+			// Spotlight with soft border:
+			attenuation = smoothstep(spotOuterAngle, spotInnerAngle, cosAngle);
+		}
+
 		visibility *= attenuation;
 	}
 

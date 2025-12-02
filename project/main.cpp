@@ -64,6 +64,7 @@ vec3 point_light_color = vec3(1.f, 1.f, 1.f);
 bool useSpotLight = true;
 float innerSpotlightAngle = 17.5f;
 float outerSpotlightAngle = 22.5f;
+bool animateLight = true;
 
 
 float point_light_intensity_multiplier = 10000.0f;
@@ -331,7 +332,15 @@ void display(void)
 		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, &border.x);
 	}
 
-
+	if (useHardwarePCF) {
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	}
+	else
+	{
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
 
 
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -488,6 +497,26 @@ void gui()
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
 	            ImGui::GetIO().Framerate);
 	// ----------------------------------------------------------
+	ImGui::SliderInt("Shadow Map Resolution", &shadowMapResolution, 32, 2048);
+
+	ImGui::Text("Polygon Offset");
+	ImGui::Checkbox("Use polygon offset", &usePolygonOffset);
+
+	ImGui::Text("Spot light");
+	ImGui::Checkbox("Use spot light", &useSpotLight);
+	ImGui::Checkbox("Use soft falloff", &useSoftFalloff);
+
+	ImGui::Text("PCF");
+	ImGui::Checkbox("Use hardware PCF", &useHardwarePCF);
+
+
+	///////////////////////////////////////////////////////////////////////////
+	// A button for reloading the shaders
+	///////////////////////////////////////////////////////////////////////////
+	if (ImGui::Button("Reload Shaders"))
+	{
+		loadShaders(true);
+	}
 }
 
 int main(int argc, char* argv[])
