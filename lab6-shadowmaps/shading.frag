@@ -1,5 +1,5 @@
 #version 420
-
+// lab6
 // required by GLSL spec Sect 4.5.3 (though nvidia does not, amd does)
 precision highp float;
 
@@ -51,6 +51,7 @@ in vec3 viewSpacePosition;
 ///////////////////////////////////////////////////////////////////////////////
 uniform mat4 viewInverse;
 uniform vec3 viewSpaceLightPosition;
+uniform mat4 lightMatrix;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Output color
@@ -173,6 +174,7 @@ void main()
 	float visibility = 1.0;
 	float attenuation = 1.0;
 
+	vec4 shadowMapCoord = lightMatrix * vec4(viewSpacePosition, 1.0);
 	visibility = textureProj(shadowMapTex, shadowMapCoord);
 
 	attenuation = 1.0;

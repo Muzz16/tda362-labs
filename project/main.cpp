@@ -61,12 +61,32 @@ const std::string envmap_base_name = "001";
 ///////////////////////////////////////////////////////////////////////////////
 vec3 lightPosition;
 vec3 point_light_color = vec3(1.f, 1.f, 1.f);
+bool useSpotLight = true;
+float innerSpotlightAngle = 17.5f;
+float outerSpotlightAngle = 22.5f;
+
 
 float point_light_intensity_multiplier = 10000.0f;
 
 
+///////////////////////////////////////////////////////////////////////////////
+// Shadow map
+///////////////////////////////////////////////////////////////////////////////
+enum ClampMode
+{
+	Edge = 1,
+	Border = 2
+};
 
-
+FboInfo shadowMapFB;
+int shadowMapResolution = 1028;
+int shadowMapClampMode = ClampMode::Edge;
+bool shadowMapClampBorderShadowed = false;
+bool usePolygonOffset = true;
+bool useSoftFalloff = false;
+bool useHardwarePCF = false;
+float polygonOffset_factor = 2.0f;
+float polygonOffset_units = 10.0f;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Camera parameters.
@@ -125,7 +145,7 @@ void initialize()
 	///////////////////////////////////////////////////////////////////////
 	//		Load Shaders
 	///////////////////////////////////////////////////////////////////////
-	loadShaders(false);
+	loadShaders(true);
 
 	///////////////////////////////////////////////////////////////////////
 	// Load models and set up model matrices
@@ -150,6 +170,16 @@ void initialize()
 	reflectionMap = labhelper::loadHdrMipmapTexture(filenames);
 
 
+
+	///////////////////////////////////////////////////////////////////////
+	// Setup Framebuffer for shadow map rendering
+	///////////////////////////////////////////////////////////////////////
+	shadowMapFB.resize(shadowMapResolution, shadowMapResolution);
+
+	glActiveTexture(GL_TEXTURE10);
+	glBindTexture(GL_TEXTURE_2D, shadowMapFB.depthBuffer);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
 
 	glEnable(GL_DEPTH_TEST); // enable Z-buffering
 	glEnable(GL_CULL_FACE);  // enables backface culling
@@ -199,7 +229,19 @@ void drawScene(GLuint currentShaderProgram,
 	labhelper::setUniformSlow(currentShaderProgram, "viewSpaceLightPosition", vec3(viewSpaceLightPosition));
 	labhelper::setUniformSlow(currentShaderProgram, "viewSpaceLightDir",
 	                          normalize(vec3(viewMatrix * vec4(-lightPosition, 0.0f))));
+	labhelper::setUniformSlow(currentShaderProgram, "spotOuterAngle", std::cos(radians(outerSpotlightAngle)));
 
+
+	labhelper::setUniformSlow(currentShaderProgram, "useSpotLight", useSpotLight ? 1 : 0);
+	labhelper::setUniformSlow(currentShaderProgram, "useSoftFalloff", useSoftFalloff ? 1 : 0);
+	labhelper::setUniformSlow(currentShaderProgram, "spotInnerAngle", std::cos(radians(innerSpotlightAngle)));
+
+	glActiveTexture(GL_TEXTURE10);
+	glBindTexture(GL_TEXTURE_2D, shadowMapFB.depthBuffer);
+
+	mat4 lightMatrix = translate(vec3(0.5f)) * scale(vec3(0.5f)) * lightProjectionMatrix * lightViewMatrix * inverse(viewMatrix);
+
+	labhelper::setUniformSlow(currentShaderProgram, "lightMatrix", lightMatrix);
 
 	// Environment
 	labhelper::setUniformSlow(currentShaderProgram, "environment_multiplier", environment_multiplier);
@@ -269,6 +311,52 @@ void display(void)
 	glBindTexture(GL_TEXTURE_2D, reflectionMap);
 	glActiveTexture(GL_TEXTURE0);
 
+	if (shadowMapFB.width != shadowMapResolution || shadowMapFB.height != shadowMapResolution) {
+		shadowMapFB.resize(shadowMapResolution, shadowMapResolution);
+	}
+
+	glBindTexture(GL_TEXTURE_2D, shadowMapFB.depthBuffer);
+
+	if (shadowMapClampMode == ClampMode::Edge) {
+		glBindTexture(GL_TEXTURE_2D, shadowMapFB.depthBuffer);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	}
+
+	if (shadowMapClampMode == ClampMode::Border) {
+		glBindTexture(GL_TEXTURE_2D, shadowMapFB.depthBuffer);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+		vec4 border(shadowMapClampBorderShadowed ? 0.f : 1.f);
+		glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, &border.x);
+	}
+
+
+
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+	///////////////////////////////////////////////////////////////////////////
+	// Draw Shadow Map
+	///////////////////////////////////////////////////////////////////////////
+
+	glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFB.framebufferId);
+	glViewport(0, 0, shadowMapFB.width, shadowMapFB.height);
+	glClearColor(1.0, 1.0, 1.0, 1.0);
+	glClearDepth(1.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	if (usePolygonOffset) {
+		glEnable(GL_POLYGON_OFFSET_FILL);
+		glPolygonOffset(polygonOffset_factor, polygonOffset_units);
+	}
+
+	drawScene(simpleShaderProgram, lightViewMatrix, lightProjMatrix, lightViewMatrix, lightProjMatrix);
+
+	if (usePolygonOffset) {
+		glDisable(GL_POLYGON_OFFSET_FILL);
+	}
+
+	labhelper::Material& screen = landingpadModel->m_materials[8];
 
 
 	///////////////////////////////////////////////////////////////////////////
