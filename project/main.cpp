@@ -21,6 +21,7 @@ using namespace glm;
 #include <Model.h>
 #include "hdr.h"
 #include "fbo.h"
+#include "heightfield.h"
 
 
 
@@ -48,6 +49,7 @@ bool g_isMouseDragging = false;
 GLuint shaderProgram;       // Shader for rendering the final image
 GLuint simpleShaderProgram; // Shader used to draw the shadow map
 GLuint backgroundProgram;
+GLuint heightFieldProgram;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Environment
@@ -110,6 +112,8 @@ mat4 fighterModelMatrix;
 
 float shipSpeed = 50;
 
+HeightField terrain;
+
 
 void loadShaders(bool is_reload)
 {
@@ -132,6 +136,11 @@ void loadShaders(bool is_reload)
 	{
 		shaderProgram = shader;
 	}
+	shader = labhelper::loadShaderProgram("../project/heightfield.vert", "../project/shading.frag", is_reload);
+	if (shader != 0)
+	{
+		heightFieldProgram = shader;
+	}
 }
 
 
@@ -142,6 +151,10 @@ void loadShaders(bool is_reload)
 void initialize()
 {
 	ENSURE_INITIALIZE_ONLY_ONCE();
+
+	terrain.loadHeightField("../scenes/nlsFinland/L3123F.png");
+	terrain.loadDiffuseTexture("../scenes/nlsFinland/L3123F_downscaled.jpg");
+	terrain.generateMesh(124);
 
 	///////////////////////////////////////////////////////////////////////
 	//		Load Shaders
@@ -182,10 +195,11 @@ void initialize()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+
+
 	glEnable(GL_DEPTH_TEST); // enable Z-buffering
-	glEnable(GL_CULL_FACE);  // enables backface culling
-
-
+	//glEnable(GL_CULL_FACE);  // enables backface culling
 
 }
 
@@ -267,6 +281,7 @@ void drawScene(GLuint currentShaderProgram,
 	                          inverse(transpose(viewMatrix * fighterModelMatrix)));
 
 	labhelper::render(fighterModel);
+
 }
 
 
@@ -293,7 +308,7 @@ void display(void)
 	///////////////////////////////////////////////////////////////////////////
 	// setup matrices
 	///////////////////////////////////////////////////////////////////////////
-	mat4 projMatrix = perspective(radians(45.0f), float(windowWidth) / float(windowHeight), 5.0f, 2000.0f);
+	mat4 projMatrix = perspective(radians(45.0f), float(windowWidth) / float(windowHeight), 5.0f, 5000.0f);
 	mat4 viewMatrix = lookAt(cameraPosition, cameraPosition + cameraDirection, worldUp);
 
 	vec4 lightStartPosition = vec4(40.0f, 40.0f, 0.0f, 1.0f);
@@ -380,8 +395,53 @@ void display(void)
 	drawScene(shaderProgram, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
 	debugDrawLight(viewMatrix, projMatrix, vec3(lightPosition));
 
+	glUseProgram(heightFieldProgram);
+
+	glUseProgram(heightFieldProgram);
+
+	// 1. Set Matrices
+	float terrainScale = 1000.0f;
+	mat4 terrainModelMatrix = scale(vec3(terrainScale, 1.0f, terrainScale));
+
+	labhelper::setUniformSlow(heightFieldProgram, "modelViewProjectionMatrix",
+		projMatrix* viewMatrix* terrainModelMatrix);
+	labhelper::setUniformSlow(heightFieldProgram, "modelViewMatrix",
+		viewMatrix* terrainModelMatrix);
+	labhelper::setUniformSlow(heightFieldProgram, "normalMatrix",
+		inverse(transpose(viewMatrix* terrainModelMatrix)));
+
+	// 2. Bind the Height Map Texture
+	// We pick Texture Unit 0 (GL_TEXTURE0)
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, terrain.m_texid_hf);
+	labhelper::setUniformSlow(heightFieldProgram, "heightMap", 0);
+	labhelper::setUniformSlow(heightFieldProgram, "heightScale", 300.0f);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, terrain.m_texid_diffuse);
 
 
+	labhelper::setUniformSlow(heightFieldProgram, "colorMap", 1);
+
+	// toggle for textures
+	labhelper::setUniformSlow(heightFieldProgram, "has_color_texture", 1);
+	// ---------------------------------------------
+
+	// Light data
+	vec4 viewSpaceLightPosition = viewMatrix * vec4(lightPosition, 1.0f);
+	labhelper::setUniformSlow(heightFieldProgram, "point_light_color", point_light_color);
+	labhelper::setUniformSlow(heightFieldProgram, "point_light_intensity_multiplier", point_light_intensity_multiplier);
+	labhelper::setUniformSlow(heightFieldProgram, "viewSpaceLightPosition", vec3(viewSpaceLightPosition));
+	labhelper::setUniformSlow(heightFieldProgram, "viewSpaceLightDir",
+		normalize(vec3(viewMatrix* vec4(-lightPosition, 0.0f))));
+	labhelper::setUniformSlow(heightFieldProgram, "environment_multiplier", environment_multiplier);
+	labhelper::setUniformSlow(heightFieldProgram, "viewInverse", inverse(viewMatrix));
+
+
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	terrain.submitTriangles();
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	
 }
 
 
@@ -462,19 +522,19 @@ bool handleEvents(void)
 
 	if(state[SDL_SCANCODE_W])
 	{
-		cameraPosition += cameraSpeed * deltaTime * cameraDirection;
+		cameraPosition += 50*cameraSpeed * deltaTime * cameraDirection;
 	}
 	if(state[SDL_SCANCODE_S])
 	{
-		cameraPosition -= cameraSpeed * deltaTime * cameraDirection;
+		cameraPosition -= 50 * cameraSpeed * deltaTime * cameraDirection;
 	}
 	if(state[SDL_SCANCODE_A])
 	{
-		cameraPosition -= cameraSpeed * deltaTime * cameraRight;
+		cameraPosition -= 50 * cameraSpeed * deltaTime * cameraRight;
 	}
 	if(state[SDL_SCANCODE_D])
 	{
-		cameraPosition += cameraSpeed * deltaTime * cameraRight;
+		cameraPosition += 50 * cameraSpeed * deltaTime * cameraRight;
 	}
 	if(state[SDL_SCANCODE_Q])
 	{
