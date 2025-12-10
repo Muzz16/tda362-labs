@@ -41,13 +41,15 @@ void main()
     float hU = textureOffset(heightMap, texCoordIn, ivec2( 0, 1)).r * heightScale;
 
     // Deduce the normal vector from the height differences
-    vec3 newNormal = normalize(vec3(hL - hR, 100.0, hD - hU));
+    vec3 newNormal = normalize(vec3(hL - hR, 2.0, hD - hU));
 
     // 4. Apply Matrices
     gl_Position = modelViewProjectionMatrix * vec4(mappedPos, 1.0);
-    texCoord = texCoordIn;
-
+    
     // Transform the NEW normal by the normal matrix
-    viewSpaceNormal = (normalMatrix * vec4(newNormal, 0.0)).xyz;
     viewSpacePosition = (modelViewMatrix * vec4(mappedPos, 1.0)).xyz;
+    viewSpaceNormal = normalize((normalMatrix * vec4(newNormal, 0.0)).xyz);
+    
+
+    texCoord = texCoordIn;
 }

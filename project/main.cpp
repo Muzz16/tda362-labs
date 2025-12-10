@@ -395,7 +395,6 @@ void display(void)
 	drawScene(shaderProgram, viewMatrix, projMatrix, lightViewMatrix, lightProjMatrix);
 	debugDrawLight(viewMatrix, projMatrix, vec3(lightPosition));
 
-	glUseProgram(heightFieldProgram);
 
 	glUseProgram(heightFieldProgram);
 
@@ -419,23 +418,31 @@ void display(void)
 
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, terrain.m_texid_diffuse);
-
-
 	labhelper::setUniformSlow(heightFieldProgram, "colorMap", 1);
-
-	// toggle for textures
 	labhelper::setUniformSlow(heightFieldProgram, "has_color_texture", 1);
+
 	// ---------------------------------------------
 
-	// Light data
-	vec4 viewSpaceLightPosition = viewMatrix * vec4(lightPosition, 1.0f);
-	labhelper::setUniformSlow(heightFieldProgram, "point_light_color", point_light_color);
-	labhelper::setUniformSlow(heightFieldProgram, "point_light_intensity_multiplier", point_light_intensity_multiplier);
-	labhelper::setUniformSlow(heightFieldProgram, "viewSpaceLightPosition", vec3(viewSpaceLightPosition));
-	labhelper::setUniformSlow(heightFieldProgram, "viewSpaceLightDir",
-		normalize(vec3(viewMatrix* vec4(-lightPosition, 0.0f))));
-	labhelper::setUniformSlow(heightFieldProgram, "environment_multiplier", environment_multiplier);
+// 3. Connect Environment Maps
+	// In your code earlier, you bound Irradiance to Unit 7 and Reflection to Unit 8.
+	// We just need to tell the shader to look there.
+	labhelper::setUniformSlow(heightFieldProgram, "irradianceMap", 7);
+	labhelper::setUniformSlow(heightFieldProgram, "reflectionMap", 8);
+
+	// 4. Send Environment Parameters
+	// "viewInverse" is needed to calculate reflections relative to the camera
 	labhelper::setUniformSlow(heightFieldProgram, "viewInverse", inverse(viewMatrix));
+	labhelper::setUniformSlow(heightFieldProgram, "environment_multiplier", environment_multiplier);
+
+	// 5. Define Material Properties
+	// Terrain is rough (0.9) and not metallic (0.0). 
+	// If you leave these as 0, the math might glitch or look like a mirror.
+	labhelper::setUniformSlow(heightFieldProgram, "roughness", 0.9f);
+	labhelper::setUniformSlow(heightFieldProgram, "metalness", 0.0f);
+
+	// 6. Disable the "Small Sun"
+	// Set intensity to 0.0 effectively turns it off.
+	labhelper::setUniformSlow(heightFieldProgram, "point_light_intensity_multiplier", 0.0f);
 
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

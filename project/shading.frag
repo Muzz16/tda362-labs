@@ -114,12 +114,6 @@ vec3 calculateDirectIllumiunation(vec3 wo, vec3 n, vec3 base_color)
 vec3 calculateIndirectIllumination(vec3 wo, vec3 n, vec3 base_color)
 {
 	vec3 indirect_illum = vec3(0.f);
-	///////////////////////////////////////////////////////////////////////////
-	// Task 5 - Lookup the irradiance from the irradiance map and calculate
-	//          the diffuse reflection
-	///////////////////////////////////////////////////////////////////////////
-	// Calculate the spherical coordinates of the direction
-
 
 	vec3 world_normal = vec3(viewInverse * vec4(n, 0.0)); // normal in world space
 
@@ -135,11 +129,6 @@ vec3 calculateIndirectIllumination(vec3 wo, vec3 n, vec3 base_color)
 	vec3 diffuse_term = base_color * (1.0 / PI) * Li; // diffuse reflection
 	indirect_illum = diffuse_term;
 
-
-	///////////////////////////////////////////////////////////////////////////
-	// Task 6 - Look up in the reflection map from the perfect specular
-	//          direction and calculate the dielectric and metal terms.
-	///////////////////////////////////////////////////////////////////////////
 	vec3 wi = normalize(reflect(-wo, n)); // perfect reflection direction in view space
 	vec3 wr = normalize(vec3(viewInverse * vec4(wi, 0.0))); // perfect reflection direction in world space
 
