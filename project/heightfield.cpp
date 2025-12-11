@@ -96,8 +96,8 @@ void HeightField::generateMesh(int tesselation)
 	std::vector<float> texcoords;
 	std::vector<uint32_t> indices;
 
-	positions.reserve(totalVertices * 3);
-	texcoords.reserve(totalVertices * 2);
+	positions.reserve(totalVertices * 3); // 3 floats per vertex (x,y,z)
+	texcoords.reserve(totalVertices * 2); // 2 floats per vertex (u,v)
 
 	// Generate vertex positions and texture coordinates
 	// x, z in [-1, +1], y = 0
@@ -127,8 +127,8 @@ void HeightField::generateMesh(int tesselation)
 	}
 
 	// Generate triangle strip indices with primitive restart
-	// Each row is a triangle strip
-	const uint32_t RESTART_INDEX = 0xFFFFFFFF;
+	// Instead of defining 3 vertices per triangle, we zig-zag between rows.
+	const uint32_t RESTART_INDEX = UINT32_MAX;
 
 	for (int row = 0; row < tesselation; row++)
 	{
@@ -158,6 +158,8 @@ void HeightField::generateMesh(int tesselation)
 	glGenVertexArrays(1, &m_vao);
 	glBindVertexArray(m_vao);
 
+
+	// Create and bind buffers
 	m_indexBuffer = labhelper::createAddIndexBuffer(m_vao, indices.data(), indices.size() * sizeof(int));
 	m_positionBuffer = labhelper::createAddAttribBuffer(m_vao, positions.data(), positions.size() * sizeof(float),
 		/*attributeIndex=*/0, /*attribueSize=*/3, GL_FLOAT);

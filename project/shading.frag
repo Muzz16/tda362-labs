@@ -45,6 +45,7 @@ uniform float spotInnerAngle;
 in vec2 texCoord;
 in vec3 viewSpaceNormal;
 in vec3 viewSpacePosition;
+in vec4 shadowMapCoord;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Input uniform variables
@@ -58,7 +59,7 @@ uniform mat4 lightMatrix;
 ///////////////////////////////////////////////////////////////////////////////
 layout(location = 0) out vec4 fragmentColor;
 
-in vec4 shadowMapCoord;
+
 layout(binding = 10) uniform sampler2DShadow shadowMapTex;
 
 uniform int useSpotLight;
@@ -160,7 +161,7 @@ void main()
 	float visibility = 1.0;
 	float attenuation = 1.0;
 
-	vec4 shadowMapCoord = lightMatrix * vec4(viewSpacePosition, 1.0);
+	
 	visibility = textureProj(shadowMapTex, shadowMapCoord);
 
 	attenuation = 1.0;

@@ -63,12 +63,13 @@ const std::string envmap_base_name = "001";
 ///////////////////////////////////////////////////////////////////////////////
 vec3 lightPosition;
 vec3 point_light_color = vec3(1.f, 1.f, 1.f);
+float lightAzimuth = 0.f;
+float lightZenith = 45.f;
+float lightDistance = 55.f;
 bool useSpotLight = true;
 float innerSpotlightAngle = 17.5f;
 float outerSpotlightAngle = 22.5f;
 bool animateLight = true;
-
-
 float point_light_intensity_multiplier = 10000.0f;
 
 
@@ -82,8 +83,8 @@ enum ClampMode
 };
 
 FboInfo shadowMapFB;
-int shadowMapResolution = 1028;
-int shadowMapClampMode = ClampMode::Edge;
+int shadowMapResolution = 1024;
+int shadowMapClampMode = ClampMode::Border;
 bool shadowMapClampBorderShadowed = false;
 bool usePolygonOffset = true;
 bool useSoftFalloff = false;
@@ -154,12 +155,12 @@ void initialize()
 
 	terrain.loadHeightField("../scenes/nlsFinland/L3123F.png");
 	terrain.loadDiffuseTexture("../scenes/nlsFinland/L3123F_downscaled.jpg");
-	terrain.generateMesh(124);
+	terrain.generateMesh(1024);
 
 	///////////////////////////////////////////////////////////////////////
 	//		Load Shaders
 	///////////////////////////////////////////////////////////////////////
-	loadShaders(true);
+	loadShaders(false);
 
 	///////////////////////////////////////////////////////////////////////
 	// Load models and set up model matrices
@@ -195,11 +196,10 @@ void initialize()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
 
 
 	glEnable(GL_DEPTH_TEST); // enable Z-buffering
-	//glEnable(GL_CULL_FACE);  // enables backface culling
+	glEnable(GL_CULL_FACE);  // enables backface culling
 
 }
 
@@ -331,16 +331,15 @@ void display(void)
 		shadowMapFB.resize(shadowMapResolution, shadowMapResolution);
 	}
 
+	glActiveTexture(GL_TEXTURE10);
 	glBindTexture(GL_TEXTURE_2D, shadowMapFB.depthBuffer);
 
 	if (shadowMapClampMode == ClampMode::Edge) {
-		glBindTexture(GL_TEXTURE_2D, shadowMapFB.depthBuffer);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	}
 
 	if (shadowMapClampMode == ClampMode::Border) {
-		glBindTexture(GL_TEXTURE_2D, shadowMapFB.depthBuffer);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 		vec4 border(shadowMapClampBorderShadowed ? 0.f : 1.f);
@@ -358,7 +357,6 @@ void display(void)
 	}
 
 
-	glBindTexture(GL_TEXTURE_2D, 0);
 	///////////////////////////////////////////////////////////////////////////
 	// Draw Shadow Map
 	///////////////////////////////////////////////////////////////////////////
@@ -374,7 +372,7 @@ void display(void)
 		glPolygonOffset(polygonOffset_factor, polygonOffset_units);
 	}
 
-	drawScene(simpleShaderProgram, lightViewMatrix, lightProjMatrix, lightViewMatrix, lightProjMatrix);
+	drawScene(shaderProgram, lightViewMatrix, lightProjMatrix, lightViewMatrix, lightProjMatrix);
 
 	if (usePolygonOffset) {
 		glDisable(GL_POLYGON_OFFSET_FILL);
@@ -402,48 +400,63 @@ void display(void)
 	float terrainScale = 1000.0f;
 	mat4 terrainModelMatrix = scale(vec3(terrainScale, 1.0f, terrainScale));
 
+	// light source
+	vec4 viewSpaceLightPosition = viewMatrix * vec4(lightPosition, 1.0f);
+	labhelper::setUniformSlow(heightFieldProgram, "point_light_color", point_light_color);
+	labhelper::setUniformSlow(heightFieldProgram, "point_light_intensity_multiplier",
+		point_light_intensity_multiplier);
+	labhelper::setUniformSlow(heightFieldProgram, "viewSpaceLightPosition", vec3(viewSpaceLightPosition));
+	labhelper::setUniformSlow(heightFieldProgram, "viewSpaceLightDir",
+		normalize(vec3(viewMatrix* vec4(-lightPosition, 0.0f))));
+
+	labhelper::setUniformSlow(heightFieldProgram, "spotOuterAngle", std::cos(radians(outerSpotlightAngle)));
+	labhelper::setUniformSlow(heightFieldProgram, "useSpotLight", useSpotLight ? 1 : 0);
+	labhelper::setUniformSlow(heightFieldProgram, "useSoftFalloff", useSoftFalloff ? 1 : 0);
+	labhelper::setUniformSlow(heightFieldProgram, "spotInnerAngle", std::cos(radians(innerSpotlightAngle)));
+
+
+	glActiveTexture(GL_TEXTURE10);
+	glBindTexture(GL_TEXTURE_2D, shadowMapFB.depthBuffer);
+
+	mat4 lightMatrix = translate(vec3(0.5f)) * scale(vec3(0.5f)) * lightProjMatrix * lightViewMatrix * inverse(viewMatrix);
+
+	labhelper::setUniformSlow(heightFieldProgram, "lightMatrix", lightMatrix);
+
+	// Environment
+	labhelper::setUniformSlow(heightFieldProgram, "environment_multiplier", environment_multiplier);
+
+	// camera
+	labhelper::setUniformSlow(heightFieldProgram, "viewInverse", inverse(viewMatrix));
+
+	// Transformation matrices
 	labhelper::setUniformSlow(heightFieldProgram, "modelViewProjectionMatrix",
 		projMatrix* viewMatrix* terrainModelMatrix);
-	labhelper::setUniformSlow(heightFieldProgram, "modelViewMatrix",
-		viewMatrix* terrainModelMatrix);
+	labhelper::setUniformSlow(heightFieldProgram, "modelViewMatrix", viewMatrix* terrainModelMatrix);
 	labhelper::setUniformSlow(heightFieldProgram, "normalMatrix",
 		inverse(transpose(viewMatrix* terrainModelMatrix)));
 
-	// 2. Bind the Height Map Texture
-	// We pick Texture Unit 0 (GL_TEXTURE0)
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, terrain.m_texid_hf);
-	labhelper::setUniformSlow(heightFieldProgram, "heightMap", 0);
-	labhelper::setUniformSlow(heightFieldProgram, "heightScale", 300.0f);
 
+	// Define Material Properties
+	labhelper::setUniformSlow(heightFieldProgram, "material_color", vec3(1.0f, 1.0f, 1.0f));
+	labhelper::setUniformSlow(heightFieldProgram, "material_metalness", 0.0f);
+	labhelper::setUniformSlow(heightFieldProgram, "material_fresnel", 0.1f);
+	labhelper::setUniformSlow(heightFieldProgram, "material_shininess", 100.0f);
+	labhelper::setUniformSlow(heightFieldProgram, "material_emission", vec3(0.0f));
+	labhelper::setUniformSlow(heightFieldProgram, "has_color_texture", 1);  // Use aerial photo
+	labhelper::setUniformSlow(heightFieldProgram, "has_emission_texture", 0);
+
+
+	// 2. Bind the Height field Texture
+	// We pick Texture Unit 1 (GL_TEXTURE1)
 	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, terrain.m_texid_hf);
+	labhelper::setUniformSlow(heightFieldProgram, "heightMap", 1);
+	labhelper::setUniformSlow(heightFieldProgram, "heightScale", 100.0f);
+
+	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, terrain.m_texid_diffuse);
-	labhelper::setUniformSlow(heightFieldProgram, "colorMap", 1);
-	labhelper::setUniformSlow(heightFieldProgram, "has_color_texture", 1);
 
 	// ---------------------------------------------
-
-// 3. Connect Environment Maps
-	// In your code earlier, you bound Irradiance to Unit 7 and Reflection to Unit 8.
-	// We just need to tell the shader to look there.
-	labhelper::setUniformSlow(heightFieldProgram, "irradianceMap", 7);
-	labhelper::setUniformSlow(heightFieldProgram, "reflectionMap", 8);
-
-	// 4. Send Environment Parameters
-	// "viewInverse" is needed to calculate reflections relative to the camera
-	labhelper::setUniformSlow(heightFieldProgram, "viewInverse", inverse(viewMatrix));
-	labhelper::setUniformSlow(heightFieldProgram, "environment_multiplier", environment_multiplier);
-
-	// 5. Define Material Properties
-	// Terrain is rough (0.9) and not metallic (0.0). 
-	// If you leave these as 0, the math might glitch or look like a mirror.
-	labhelper::setUniformSlow(heightFieldProgram, "roughness", 0.9f);
-	labhelper::setUniformSlow(heightFieldProgram, "metalness", 0.0f);
-
-	// 6. Disable the "Small Sun"
-	// Set intensity to 0.0 effectively turns it off.
-	labhelper::setUniformSlow(heightFieldProgram, "point_light_intensity_multiplier", 0.0f);
-
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	terrain.submitTriangles();
@@ -568,6 +581,10 @@ void gui()
 
 	ImGui::Text("Polygon Offset");
 	ImGui::Checkbox("Use polygon offset", &usePolygonOffset);
+
+	ImGui::RadioButton("Clamp to edge", &shadowMapClampMode, ClampMode::Edge);
+	ImGui::RadioButton("Clamp to border", &shadowMapClampMode, ClampMode::Border);
+	ImGui::Checkbox("Border as shadow", &shadowMapClampBorderShadowed);
 
 	ImGui::Text("Spot light");
 	ImGui::Checkbox("Use spot light", &useSpotLight);
