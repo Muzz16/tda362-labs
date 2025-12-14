@@ -102,6 +102,8 @@ void HeightField::generateMesh(int tesselation)
 	// Generate vertex positions and texture coordinates
 	// x, z in [-1, +1], y = 0
 	// texture coordinates in [0, 1]
+
+	// Loop over rows and columns to create a grid
 	for (int row = 0; row < numVerticesPerSide; row++)
 	{
 		for (int col = 0; col < numVerticesPerSide; col++)
@@ -111,6 +113,7 @@ void HeightField::generateMesh(int tesselation)
 			float v = float(row) / float(tesselation);
 
 			// Map to [-1, +1] for x and z
+			// Mesh size of 2.0 units
 			float x = u * 2.0f - 1.0f;
 			float z = v * 2.0f - 1.0f;
 			float y = 0.0f;
@@ -179,6 +182,7 @@ void HeightField::submitTriangles(void)
 
 	// Enable primitive restart
 	glEnable(GL_PRIMITIVE_RESTART);
+	// Set restart index
 	glPrimitiveRestartIndex(UINT32_MAX);
 
 	// Bind VAO and draw

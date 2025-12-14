@@ -21,6 +21,7 @@ void main()
     texCoord = inTexCoord;
 
     // Sample heightfield
+    // Exaggerate the height by the height scale
     float h = texture(heightMap, texCoord).r;
     float worldY = h * heightScale;
 
@@ -30,12 +31,12 @@ void main()
     // Calculate the size of one pixel in UV coordinates.
     vec2 texelSize = 1.0 / textureSize(heightMap, 0);
 
-    // Sample neighbors (right, left, up, down)
-    // Offset the texture coordinates by one texel size
-    float hR = texture(heightMap, texCoord + vec2(texelSize.x, 0.0)).r;
-    float hL = texture(heightMap, texCoord - vec2(texelSize.x, 0.0)).r;
-    float hU = texture(heightMap, texCoord + vec2(0.0, texelSize.y)).r;
-    float hD = texture(heightMap, texCoord - vec2(0.0, texelSize.y)).r;
+    // Sample neighbors
+    // Look at the height of the pixels to the right, left, up and down
+    float hR = texture(heightMap, texCoord + vec2(texelSize.x, 0.0)).r; // step to the right
+    float hL = texture(heightMap, texCoord - vec2(texelSize.x, 0.0)).r; // step to the left
+    float hU = texture(heightMap, texCoord + vec2(0.0, texelSize.y)).r; // step up
+    float hD = texture(heightMap, texCoord - vec2(0.0, texelSize.y)).r; // step down
 
     // Calculate slope in X and Z 
     // 4.0 is to account for the grid size [-1 ,1] (size 2) and 
@@ -43,23 +44,25 @@ void main()
     float scaleFactor = heightScale / 4.0;
 
     // Calculate the change in height (the slope)
-    float dX = ((hR - hL) / texelSize.x) * scaleFactor;
-    float dZ = ((hU - hD) / texelSize.y) * scaleFactor;
+    float dX = ((hR - hL) / texelSize.x) * scaleFactor; // Height change from this pixel to the right and left
+    float dZ = ((hU - hD) / texelSize.y) * scaleFactor; // Height change from this pixel to up and down
 
     // Compute tangent vectors
     // Moves 1 unit in X, dX units UP
     // Moves 1 unit in Z, dZ units UP
-    vec3 tangentX = vec3(1.0, dX, 0.0);
+    vec3 tangentX = vec3(1.0, dX, 0.0); 
     vec3 tangentZ = vec3(0.0, dZ, 1.0);
 
     // Calculate the normal, take the cross product of the tangents, 
-    // which gives us a perpendicular vector to the surface
+    // which gives us a perpendicular vector to both of them. 
+
+    // Z x X because otherwise it will give us a normal pointing down
     vec3 worldSpaceNormal = normalize(cross(tangentZ, tangentX));
 
-    // Transform world space to view space 
+    // Transform world space into view space
     viewSpaceNormal = normalize(mat3(normalMatrix) * worldSpaceNormal);
 
-    // Transform position to view space
+    // Transform the displaced position into view space
     vec4 viewPos = modelViewMatrix * vec4(displacedPos, 1.0);
     viewSpacePosition = viewPos.xyz;
 
